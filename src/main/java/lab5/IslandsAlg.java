@@ -16,17 +16,21 @@ import java.util.Random;
 public class IslandsAlg {
 
     public static void main(String[] args) {
-        int dimension = 50; // dimension of problem
-        int complexity = 1; // fitness estimation time multiplicator
-        int populationSize = 50; // size of population
-        int generations = 10; // number of generations
+        int dimension = 10; // dimension of problem
+        int complexity = 5; // fitness estimation time multiplicator
+        int populationSize = 1000; // size of population
+        int generations = 300; // number of generations
+        int crossoverPoints = 1;
+        int islandCounts = 5;
+        int epochLength = 50;
 
         Random random = new Random(); // random
 
         CandidateFactory<double[]> factory = new MyFactory(dimension); // generation of solutions
 
         ArrayList<EvolutionaryOperator<double[]>> operators = new ArrayList<EvolutionaryOperator<double[]>>();
-        operators.add(new MyCrossover()); // Crossover
+        operators.add(new MyCrossover(new ChooseCrossover(), crossoverPoints)); // Crossover
+        operators.add(new MyCrossover(new MixCrossover(), crossoverPoints));
         operators.add(new MyMutation()); // Mutation
         EvolutionPipeline<double[]> pipeline = new EvolutionPipeline<double[]>(operators);
 
@@ -34,7 +38,10 @@ public class IslandsAlg {
 
         FitnessEvaluator<double[]> evaluator = new MultiFitnessFunction(dimension, complexity); // Fitness function
 
-        IslandEvolution<double[]> island_model = null; // your model;
+        RingMigration migration = new RingMigration();
+        IslandEvolution<double[]> island_model = new IslandEvolution<double[]>(
+                islandCounts, migration, factory, pipeline, evaluator, selection, random
+        ); // your model;
 
         island_model.addEvolutionObserver(new IslandEvolutionObserver() {
             public void populationUpdate(PopulationData populationData) {
@@ -51,7 +58,9 @@ public class IslandsAlg {
             }
         });
 
-        TerminationCondition terminate = new GenerationCount(generations);
-        island_model.evolve(populationSize, 1, 50, 2, terminate);
+        TerminationCondition terminate = new GenerationCount(generations / epochLength);
+        long sTime = System.currentTimeMillis();
+        island_model.evolve(populationSize / islandCounts, 1, epochLength, 2, terminate);
+        System.out.println("Time exicution: " + (System.currentTimeMillis() - sTime));
     }
 }
